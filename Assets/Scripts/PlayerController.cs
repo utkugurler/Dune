@@ -4,6 +4,7 @@ using UnityEngine;
 public class PlayerController : MonoBehaviour
 {
     private ScoreManager scoreManager;
+    private LevelGenerator levelGenerator;
     public GameObject character;
     public GameObject canvas;
     private Rigidbody2D rb;
@@ -17,16 +18,19 @@ public class PlayerController : MonoBehaviour
     private DateTime dateTime;
     public bool scoreDetect = false;
 
+    private bool flyFlag = false;
+    private bool fallFlag = false;
+
 	void Start()
     {
         Time.timeScale = 1; // Zamanı normal olarak başlatıyorum
-        dateTime = DateTime.Now;
-
         Debug.Log("Oyun başladı!");
+        dateTime = DateTime.Now;
         canvas.SetActive(false);
         rb = this.GetComponent<Rigidbody2D>();
         defaultAngular = rb.angularDrag;
         scoreManager = GameObject.Find("GameManager").GetComponent<ScoreManager>();
+        levelGenerator = GameObject.Find("GameManager").GetComponent<LevelGenerator>();
     }
 
     // Update is called once per frame
@@ -45,8 +49,8 @@ public class PlayerController : MonoBehaviour
     private void ComboControl()
 	{
         float speed = rb.velocity.magnitude;
-        Debug.Log(speed);
-		if (speed < 0.5)
+        // Debug.Log(speed);
+		if (speed < 4)
 		{
             scoreManager.comboFlag = false;
 		}
@@ -65,12 +69,12 @@ public class PlayerController : MonoBehaviour
             if (isGround) // Yerdeyse aşağıya kuvvet vermeden hareket edecek
             {
                 movement = new Vector2(1, 0);
-                Debug.Log("Yerde");
+                // Debug.Log("Yerde");
             }
             else
             {
                 movement = new Vector2(0, -1);
-                Debug.Log("Yerde değil");
+                // Debug.Log("Yerde değil");
             }
             moveCharacter(movement);
         }
@@ -97,12 +101,11 @@ public class PlayerController : MonoBehaviour
         // Burada karakterin hızını alıp ona göre işlem yaptırıyoruz
         if (FallDamage(rb.velocity.magnitude))
         {
-            Debug.LogError("Hız çok yüksek!");
+            // Debug.LogError("Hız çok yüksek!");
             if (IsDamage())
             {
                 // Oyun bitti hızlı çarptı düz alana
                 canvas.SetActive(true);
-
                 TimeSpan date = DateTime.Now - dateTime;
                 Debug.Log($"Game has finished in {date.Seconds} seconds");
                 Time.timeScale = 0;
@@ -110,7 +113,7 @@ public class PlayerController : MonoBehaviour
         }
         else
         {
-            Debug.Log("Hız düşük");
+           // Debug.Log("Hız düşük");
         }
     }
 
@@ -118,12 +121,22 @@ public class PlayerController : MonoBehaviour
 	{
         if (yTempCoord < transform.position.y)
         {
-            Debug.Log("Yükseliyor");
+			if (flyFlag == false)
+			{
+                Debug.Log("Yükseliyor");
+                flyFlag = true;
+                fallFlag = false;
+			}
             scoreDetect = true;
         }
         else
         {
-            Debug.Log("Düşüyor");
+            if(fallFlag == false)
+			{
+                Debug.Log("Düşüyor");
+                fallFlag = true;
+                flyFlag = false;
+			}
             scoreDetect = false;
         }
         yTempCoord = transform.position.y;
@@ -131,7 +144,7 @@ public class PlayerController : MonoBehaviour
  
     private bool FallDamage(float speed)
     {
-        Debug.Log(speed);
+        // Debug.Log(speed);
         if (speed > fallLimitSpeed)
 		{
             return true;
@@ -149,9 +162,9 @@ public class PlayerController : MonoBehaviour
         float distance = 0.3f;
         Debug.DrawRay(position, direction, Color.green);
         RaycastHit2D hit = Physics2D.Raycast(position, direction, distance, groundLayer);
-        if (hit.collider != null)
+        if (hit.collider != null && hit.collider.isTrigger == false)
         {
-			if (isGround)
+			if (isGround && scoreDetect) // scoreDetect düştüğünü anlıyoruz
 			{
                 return true;
 			}
@@ -166,10 +179,42 @@ public class PlayerController : MonoBehaviour
             Debug.Log("Yerde");
             isGround = true;
 		}
+
+        
 	}
 
 	private void OnCollisionExit2D(Collision2D collision)
 	{
         isGround = false;
 	}
+
+	private void OnTriggerEnter2D(Collider2D collision)
+	{
+        Debug.LogWarning(scoreDetect);
+
+        if (scoreDetect) // Yükselirken skor yap
+        {
+            if (collision.transform.tag == "Score")
+            {
+                // scoreManager.score = (scoreManager.score + 1);
+                scoreManager.score = scoreManager.comboCount * (scoreManager.score + 1);
+                if (scoreManager.comboFlag)
+                {
+                    scoreManager.comboCount = scoreManager.comboCount + 1;
+                                    }
+                else
+                {
+                    scoreManager.comboCount = 1;
+                }
+                Debug.Log($"Combo sayısı: {scoreManager.comboCount}");
+            }
+        }
+
+        if (collision.transform.tag == "Platform")
+        {
+            levelGenerator.SpawnPlatform(); // Platformları spawn ettik
+            levelGenerator.SpawnScore(); // Score triggerlarını spawn ettik
+            collision.enabled = false;
+        }
+    }
 }
