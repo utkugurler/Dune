@@ -1,6 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 
 public class LevelGenerator : MonoBehaviour
 {
@@ -15,14 +13,9 @@ public class LevelGenerator : MonoBehaviour
         scoresLastVector = GameObject.Find("StartScoreTrig").transform;
     }
 
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
-
     public void SpawnPlatform()
 	{
+        // Burada random sayı yaratıp array içerisindeki objelerden rastgele platform spawnlatıyoruz
         int random = Random.Range(0, renderers.Length - 1);
         GameObject platform = Instantiate(renderers[random], new Vector3(renderersLastVector.transform.position.x + 20, renderersLastVector.transform.position.y,
             renderersLastVector.transform.position.z), Quaternion.identity);
